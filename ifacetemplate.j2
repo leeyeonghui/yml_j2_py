@@ -1,0 +1,75 @@
+{# set vlans #}
+{%- for vlan in vlans %}
+	set groups VLANS vlans {{ vlan.name }} vlan-id {{ vlan.vlanID }}
+{%- endfor %}
+set apply-groups VLANS
+
+{# set trunk ports #}
+{%- for interface in trunkports %}
+	set groups TRUNK interfaces {{ interface.interface }} unit 0 family {{ interface.family }} interface-mode {{ interface.interfacemode }}
+	set groups TRUNK interfaces {{ interface.interface }} unit 0 family {{ interface.family }} vlan members {{ interface.vlans }}
+{%- endfor %}
+set apply-groups TRUNK 
+
+{# set access ports #}
+{%- for interface in accessports %}
+	set groups ACCESS interfaces <{{ interface.interfacerange }}> unit 0 family {{ interface.family }} interface-mode {{ interface.interfacemode }}
+	set groups ACCESS interfaces <{{ interface.interfacerange }}> unit 0 family {{ interface.family }} vlan members {{ interface.vlans }}
+{%- endfor %} 
+set apply-groups ACCESS
+
+{# mac-move-limit #}
+set groups MAC-MOVE-LIMIT vlans <*> switch-options mac-move-limit {{ macmovelimit.limit }}
+set groups MAC-MOVE-LIMIT vlans <*> switch-options mac-move-limit packet-action {{macmovelimit.packetaction }}
+set apply-groups MAC-MOVE-LIMIT
+
+{# interface-mac-limit #}
+set groups INTERFACE-MAC-LIMIT switch-options interface <{{ interfacemaclimit.interface }}> interface-mac-limit {{ interfacemaclimit.limit }}
+set groups INTERFACE-MAC-LIMIT switch-options interface <{{ interfacemaclimit.interface }}> interface-mac-limit packet-action {{ interfacemaclimit.packetaction }}
+set apply-groups INTERFACE-MAC-LIMIT 
+
+{# rstp #}
+set groups RSTP protocols rstp interface {{ rstp.interfacerange }}
+set groups RSTP protocols rstp bridge-priority {{ rstp.bridgepriority }}
+set apply-groups RSTP
+
+{# services #}
+{%- for service in systemservices %}
+	{%- if service.disable == 0 %}
+		set system services {{ service.service }}
+	{%- endif %}
+{%- endfor %}
+
+set chassis alarm management-ethernet link-down ignore
+
+{# loopback filter#}
+{%- for service in loopbackfilter %}
+	{%- if service.disable == 0 %}
+		{%- if service.service == "bgp" %}
+			set firewall family inet filter protect-re term {{ service.service }} from port {{ service.service }}
+            set firewall family inet filter protect-re term {{ service.service }} then accept
+		{%- elif service.service == "ssh" %}
+			set firewall family inet filter protect-re term {{ service.service }} from protocol tcp
+			set firewall family inet filter protect-re term {{ service.service }} from port {{ service.service }}
+            set firewall family inet filter protect-re term {{ service.service }} then accept
+        {%- elif service.service == "ospf" %}
+			set firewall family inet filter protect-re term {{ service.service }} from protocol {{ service.service }}
+            set firewall family inet filter protect-re term {{ service.service }} then accept
+        {%- elif service.service == "ntp" %}
+			set firewall family inet filter protect-re term {{ service.service }} from protocol udp
+			set firewall family inet filter protect-re term {{ service.service }} from port {{ service.service }}
+            set firewall family inet filter protect-re term {{ service.service }} then accept
+        {%- elif service.service == "icmp" %}
+			set firewall family inet filter protect-re term {{ service.service }} from protocol {{ service.service }}
+            set firewall family inet filter protect-re term {{ service.service }} then accept
+        {%- elif service.service == "radius" %}
+			set firewall family inet filter protect-re term {{ service.service }} from protocol udp
+			set firewall family inet filter protect-re term {{ service.service }} from port {{ service.service }}
+            set firewall family inet filter protect-re term {{ service.service }} then accept          
+		{%- endif %}
+	{%- endif %}
+{%- endfor %}
+set firewall family inet filter protect-re term final then count discarded
+set firewall family inet filter protect-re term final then syslog
+set firewall family inet filter protect-re term final then discard
+set interfaces lo0 unit 0 family inet filter input protect-re

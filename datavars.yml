@@ -1,0 +1,67 @@
+---
+#VLANs
+vlans: 
+  - vlanID: 100
+    name: VLAN100
+  - vlanID: 200
+    name: VLAN200
+  - vlanID: 300
+    name: VLAN300
+
+#trunk ports
+trunkports: 
+  - interface: ge-0/1/0
+    family: ethernet-switching
+    interfacemode: trunk 
+    vlans: "[100 200 300]"
+  - interface: ge-0/1/1
+    family: ethernet-switching 
+    interfacemode: trunk
+    vlans: "[100 200 300]"
+
+#access ports 
+accessports:
+  - interfacerange: ge-0/0/[0-40]
+    family: ethernet-switching
+    interfacemode: access 
+    vlans: "100"
+
+#mac move limit
+macmovelimit: 
+  limit: 2
+  packetaction: drop-and-log 
+
+#interface mac limit
+interfacemaclimit: 
+  interface: ge-0/0/*
+  limit: 6
+  packetaction: drop-and-log
+
+#RSTP 
+rstp: 
+  bridgepriority: 32K
+  interfacerange: ge-*/*/*
+
+#Services: 
+systemservices: 
+  - service: ftp
+    disable: 0
+  - service: ssh
+    disable: 0
+  - service: telnet
+    disable: 1
+
+#loopback filter: 
+loopbackfilter: 
+  - service: bgp
+    disable: 0
+  - service: ssh 
+    disable: 0
+  - service: ospf
+    disable: 0
+  - service: ntp 
+    disable: 0 
+  - service: icmp 
+    disable: 0 
+  - service: radius 
+    disable: 0    
